@@ -18,6 +18,12 @@ background:#222;
 border:4px solid white;
 }
 
+button{
+padding:10px 20px;
+margin:5px;
+font-size:16px;
+}
+
 </style>
 
 </head>
@@ -26,6 +32,11 @@ border:4px solid white;
 
 <h1>Turbo Drift</h1>
 <p>Arrow Keys = Drive | SPACE = Drift Brake</p>
+
+<button onclick="setCar('bugatti')">Bugatti</button>
+<button onclick="setCar('ferrari')">Ferrari</button>
+
+<br><br>
 
 <canvas id="gameCanvas" width="900" height="500"></canvas>
 
@@ -44,21 +55,44 @@ x:450,
 y:250,
 angle:0,
 speed:0,
-maxSpeed:7,
-acc:0.25,
-friction:0.97,
-turn:0.05,
-drift:0.90
+maxSpeed:18,
+acc:0.5,
+turn:0.06,
+friction:0.96,
+color:"blue"
 };
 
 let driftScore = 0;
+let lapTime = 0;
 
 const track = {
 outer:{x:100,y:80,w:700,h:340},
 inner:{x:250,y:200,w:400,h:100}
 };
 
+let smoke = [];
+
+function setCar(type){
+
+if(type==="bugatti"){
+car.maxSpeed=20;
+car.acc=0.5;
+car.turn=0.05;
+car.color="blue";
+}
+
+if(type==="ferrari"){
+car.maxSpeed=18;
+car.acc=0.6;
+car.turn=0.07;
+car.color="red";
+}
+
+}
+
 function update(){
+
+lapTime += 1/60;
 
 if(keys["ArrowUp"]) car.speed += car.acc;
 if(keys["ArrowDown"]) car.speed -= car.acc;
@@ -66,33 +100,52 @@ if(keys["ArrowDown"]) car.speed -= car.acc;
 if(car.speed > car.maxSpeed) car.speed = car.maxSpeed;
 if(car.speed < -car.maxSpeed) car.speed = -car.maxSpeed;
 
-let turning = false;
+let turning=false;
 
 if(keys["ArrowLeft"]){
-car.angle -= car.turn * (car.speed/2);
-turning = true;
+car.angle -= car.turn*(car.speed/2);
+turning=true;
 }
 
 if(keys["ArrowRight"]){
-car.angle += car.turn * (car.speed/2);
-turning = true;
+car.angle += car.turn*(car.speed/2);
+turning=true;
 }
 
 if(keys[" "]){
-car.speed *= car.drift;
-driftScore += Math.abs(car.speed)*2;
+car.speed *=0.92;
+
+smoke.push({
+x:car.x,
+y:car.y,
+life:20
+});
+
+driftScore += Math.abs(car.speed)*3;
 }
 
-car.x += Math.cos(car.angle) * car.speed;
-car.y += Math.sin(car.angle) * car.speed;
+car.x += Math.cos(car.angle)*car.speed;
+car.y += Math.sin(car.angle)*car.speed;
 
 car.speed *= car.friction;
 
 checkCollision();
 
-if(turning && Math.abs(car.speed) > 2){
-driftScore += 0.5;
+if(turning && Math.abs(car.speed)>3){
+driftScore += 1;
 }
+
+updateSmoke();
+
+}
+
+function updateSmoke(){
+
+for(let i=0;i<smoke.length;i++){
+smoke[i].life--;
+}
+
+smoke = smoke.filter(s=>s.life>0);
 
 }
 
@@ -109,9 +162,7 @@ car.x < track.inner.x + track.inner.w &&
 car.y > track.inner.y &&
 car.y < track.inner.y + track.inner.h)
 ){
-
-car.speed *= -0.4;
-
+car.speed *= -0.5;
 }
 
 }
@@ -126,6 +177,18 @@ ctx.fillRect(track.inner.x,track.inner.y,track.inner.w,track.inner.h);
 
 }
 
+function drawSmoke(){
+
+ctx.fillStyle="rgba(200,200,200,0.5)";
+
+for(let s of smoke){
+ctx.beginPath();
+ctx.arc(s.x,s.y,8,0,Math.PI*2);
+ctx.fill();
+}
+
+}
+
 function drawCar(){
 
 ctx.save();
@@ -133,11 +196,11 @@ ctx.save();
 ctx.translate(car.x,car.y);
 ctx.rotate(car.angle);
 
-ctx.fillStyle="red";
-ctx.fillRect(-20,-10,40,20);
+ctx.fillStyle=car.color;
+ctx.fillRect(-25,-12,50,24);
 
 ctx.fillStyle="black";
-ctx.fillRect(5,-8,10,16);
+ctx.fillRect(8,-10,12,20);
 
 ctx.restore();
 
@@ -149,6 +212,7 @@ ctx.fillStyle="white";
 ctx.font="20px Arial";
 
 ctx.fillText("Drift Score: "+Math.floor(driftScore),20,30);
+ctx.fillText("Lap Time: "+lapTime.toFixed(1),20,60);
 
 }
 
@@ -157,6 +221,7 @@ function draw(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
 drawTrack();
+drawSmoke();
 drawCar();
 drawUI();
 
